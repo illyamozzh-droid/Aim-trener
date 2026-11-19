@@ -60,23 +60,17 @@ jobs:
             cp -f /tmp/editor_settings-4.4.tres "$target_dir/editor_settings-4.4.tres" 2>/dev/null || true
           done
 
-          python3 -c '
-          p = "export_presets.cfg"
-          with open(p, "r", encoding="utf-8") as f:
-              text = f.read()
-          lines = [l for l in text.splitlines() if not l.startswith(("keystore/debug=", "keystore/debug_user=", "keystore/debug_password=", "keystore/release=", "keystore/release_user=", "keystore/release_password="))]
-          add = [
-              "keystore/debug=\"/root/.android/debug.keystore\"",
-              "keystore/debug_user=\"androiddebugkey\"",
-              "keystore/debug_password=\"android\"",
-              "keystore/release=\"/root/.android/debug.keystore\"",
-              "keystore/release_user=\"androiddebugkey\"",
-              "keystore/release_password=\"android\"",
-          ]
-          out = "\n".join(lines) + "\n" + "\n".join(add) + "\n"
-          with open(p, "w", encoding="utf-8") as f:
-              f.write(out)
-          '
-          grep -E 'keystore/|gradle_build/' export_presets.cfg || true
+          if [ -f export_presets.cfg ]; then
+            grep -v -E '^(keystore/debug=|keystore/debug_user=|keystore/debug_password=|keystore/release=|keystore/release_user=|keystore/release_password=)' export_presets.cfg > /tmp/export_presets.cfg.tmp
+            cat << 'EOF' >> /tmp/export_presets.cfg.tmp
+          keystore/debug="/root/.android/debug.keystore"
+          keystore/debug_user="androiddebugkey"
+          keystore/debug_password="android"
+          keystore/release="/root/.android/debug.keystore"
+          keystore/release_user="androiddebugkey"
+          keystore/release_password="android"
+          EOF
+            mv /tmp/export_presets.cfg.tmp export_presets.cfg
+          fi
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
