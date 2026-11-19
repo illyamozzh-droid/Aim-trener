@@ -98,3 +98,9 @@ jobs:
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk 2>&1 | tee /tmp/godot_export.log
           echo "=== LINES AROUND configuration errors ==="
           grep -n -C 5 "configuration errors" /tmp/godot_export.log || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spatial-simulator-debug-apk
+          path: build/spatial_simulator.apk
