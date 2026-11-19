@@ -15,7 +15,8 @@ jobs:
 
       - name: Download Godot
         run: |
-          curl -fL "https://downloads.godotengine.org/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip" -o godot.zip
+          curl -fL "https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip" -o godot.zip
+          file godot.zip
           unzip -q godot.zip
 
       - name: Setup Android SDK
