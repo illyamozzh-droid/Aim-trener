@@ -43,25 +43,18 @@ jobs:
           fi
           echo "Detected JAVA_HOME: $JAVA_HOME_PATH"
 
-          python3 -c '
-          import os
-          path = "/github/home/.config/godot/editor_settings-4.4.tres"
-          java_path = os.environ.get("JAVA_HOME_PATH", "")
-          lines = [
-              "[gd_resource type=\"EditorSettings\" format=3]",
-              "",
-              "[resource]",
-              "export/android/debug_keystore = \"/root/.android/debug.keystore\"",
-              "export/android/debug_keystore_user = \"androiddebugkey\"",
-              "export/android/debug_keystore_pass = \"android\""
-          ]
-          if java_path:
-              lines.append(f"export/android/java_sdk_path = \"{java_path}\"")
-          with open(path, "w") as f:
-              f.write("\n".join(lines) + "\n")
-          '
-        env:
-          JAVA_HOME_PATH: ""
+          cat << 'EOF' > /github/home/.config/godot/editor_settings-4.4.tres
+[gd_resource type="EditorSettings" format=3]
+
+[resource]
+export/android/debug_keystore = "/root/.android/debug.keystore"
+export/android/debug_keystore_user = "androiddebugkey"
+export/android/debug_keystore_pass = "android"
+EOF
+
+          if [ -n "$JAVA_HOME_PATH" ]; then
+            printf 'export/android/java_sdk_path = "%s"\n' "$JAVA_HOME_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
+          fi
 
       - name: Export APK
         run: |
