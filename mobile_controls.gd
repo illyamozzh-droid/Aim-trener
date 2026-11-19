@@ -125,7 +125,7 @@ func _on_joystick_input(event: InputEvent) -> void:
 			move_changed.emit(Vector2.ZERO)
 
 	elif event is InputEventScreenDrag:
-		var delta := (event.position - _touch_origin) / 55.0
+		var delta = (event.position - _touch_origin) / 55.0
 
 		move_changed.emit(
 			Vector2(
