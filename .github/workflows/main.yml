@@ -44,7 +44,7 @@ jobs:
           export ANDROID_HOME="$SDK_PATH"
           export ANDROID_SDK_ROOT="$SDK_PATH"
 
-          cat << EOF > /github/home/.config/godot/editor_settings-4.4.tres
+          cat << EOF > /tmp/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -54,8 +54,11 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME_PATH"
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
-          cp /github/home/.config/godot/editor_settings-4.4.tres /root/.config/godot/editor_settings-4.4.tres
-          cp /github/home/.config/godot/editor_settings-4.4.tres /__w/_temp/_github_home/.config/godot/editor_settings-4.4.tres
+
+          for target_dir in /github/home/.config/godot /root/.config/godot /__w/_temp/_github_home/.config/godot; do
+            mkdir -p "$target_dir"
+            cp -f /tmp/editor_settings-4.4.tres "$target_dir/editor_settings-4.4.tres" 2>/dev/null || true
+          done
 
           if ! grep -q 'keystore/debug=' export_presets.cfg 2>/dev/null; then
             cat << 'EOF' >> export_presets.cfg
