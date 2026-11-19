@@ -18,6 +18,14 @@ jobs:
           curl -fL "https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip" -o godot.zip
           unzip -q godot.zip
 
+      - name: Install Godot Export Templates
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
+          curl -fL "https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -o templates.zip
+          unzip -q templates.zip -d templates_tmp
+          mv templates_tmp/templates/* "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          rm -rf templates.zip templates_tmp
+
       - name: Setup Android SDK
         run: |
           SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
