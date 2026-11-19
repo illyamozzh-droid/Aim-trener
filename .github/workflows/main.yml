@@ -51,4 +51,50 @@ jobs:
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
 
-          godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
+          cat << 'EOF' > export_presets.cfg
+          [preset.0]
+
+          name="Android"
+          platform="Android"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="build/spatial_simulator.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+
+          custom_template/debug=""
+          custom_template/release=""
+          gradle_build/use_gradle_build=false
+          gradle_build/gradle_build_directory=""
+          gradle_build/android_source_template=""
+          architectures/armeabi-v7a=false
+          architectures/arm64-v8a=true
+          architectures/x86=false
+          architectures/x86_64=false
+          version/code=1
+          version/name="1.0.0"
+          package/unique_name="org.example.spatialaccuracy"
+          package/name="Spatial Accuracy Simulator"
+          package/signed=true
+          screen/immersive_mode=true
+          screen/orientation=0
+          textures/vram_compression/import_etc2_astc=true
+          keystore/debug="/root/.android/debug.keystore"
+          keystore/debug_user="androiddebugkey"
+          keystore/debug_password="android"
+          keystore/release="/root/.android/debug.keystore"
+          keystore/release_user="androiddebugkey"
+          keystore/release_password="android"
+          EOF
+
+          godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk 2>&1 | tee /tmp/godot_export.log
+          echo "=== LINES AROUND configuration errors ==="
+          grep -n -C 5 "configuration errors" /tmp/godot_export.log || true
