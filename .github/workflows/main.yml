@@ -48,6 +48,19 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Configure Godot Android Settings
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat << 'EOF' > "$HOME/.config/godot/editor_settings-4.4.tres"
+[gd_resource type="EditorSettings" format=3]
+
+[resource]
+export/android/android_sdk_path = "/home/runner/android-sdk"
+export/android/debug_keystore = "/home/runner/.android/debug.keystore"
+export/android/debug_keystore_user = "androiddebugkey"
+export/android/debug_keystore_pass = "android"
+EOF
+
       - name: Export APK
         env:
           ANDROID_HOME: /home/runner/android-sdk
