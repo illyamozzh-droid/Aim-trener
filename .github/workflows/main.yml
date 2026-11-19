@@ -48,7 +48,7 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
-           - name: Configure Godot Android Settings
+      - name: Configure Godot Android Settings
         run: |
           python3 -c '
           import os
@@ -66,7 +66,6 @@ jobs:
               f.write("\n".join(line.lstrip() for line in content.splitlines()) + "\n")
           '
 
-
       - name: Export APK
         env:
           ANDROID_HOME: /home/runner/android-sdk
@@ -80,4 +79,3 @@ jobs:
         with:
           name: spatial-simulator-apk
           path: build/spatial_simulator.apk
-
