@@ -19,28 +19,23 @@ jobs:
         run: |
           set -e
           export HOME=/root
-          mkdir -p /root/.android /home/runner/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
+          mkdir -p /root/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
 
-          if [ ! -f /root/.android/debug.keystore ]; then
-            keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          fi
-          cp -f /root/.android/debug.keystore /home/runner/.android/debug.keystore
+          echo "=== DIAGNOSTIC ==="
+          pwd
+          ls -la
+          find /root /usr/local /home /github -maxdepth 5 2>/dev/null | grep -E "template|android|godot" || true
+          ls -la /usr/lib/android-sdk/build-tools 2>/dev/null || true
+          ls -la /usr/lib/android-sdk/platforms 2>/dev/null || true
 
-          for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable /github/home/.local/share/godot/export_templates/4.4.1.stable; do
-            if [ -d "$src" ] && [ "$src" != "/root/.local/share/godot/export_templates/4.4.1.stable" ]; then
-              cp -rn "$src"/* /root/.local/share/godot/export_templates/4.4.1.stable/ 2>/dev/null || true
-            fi
+          keytool -genkeypair -noprompt -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          for f in $(find /root /usr/local /home /github -name "android_debug.apk" -o -name "android_release.apk" 2>/dev/null); do
+            cp -f "$f" /root/.local/share/godot/export_templates/4.4.1.stable/
           done
+          ls -la /root/.local/share/godot/export_templates/4.4.1.stable/
 
-          ls -la /root/.local/share/godot/export_templates/4.4.1.stable/ || true
-
-          JAVA_HOME_PATH="/usr/lib/jvm/java-17-openjdk-amd64"
-          SDK_PATH="/usr/lib/android-sdk"
-          export JAVA_HOME="$JAVA_HOME_PATH"
-          export ANDROID_HOME="$SDK_PATH"
-          export ANDROID_SDK_ROOT="$SDK_PATH"
-
-          cat << EOF > /root/.config/godot/editor_settings-4.4.tres
+          cat << 'EOF' > /root/.config/godot/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -50,12 +45,11 @@ jobs:
           export/android/release_keystore = "/root/.android/debug.keystore"
           export/android/release_keystore_user = "androiddebugkey"
           export/android/release_keystore_pass = "android"
-          export/android/java_sdk_path = "$JAVA_HOME_PATH"
-          export/android/android_sdk_path = "$SDK_PATH"
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
           EOF
 
-          if [ ! -f export_presets.cfg ]; then
-            cat << 'EOF' > export_presets.cfg
+          cat << 'EOF' > export_presets.cfg
           [preset.0]
 
           name="Android"
@@ -98,10 +92,9 @@ jobs:
           keystore/release_user="androiddebugkey"
           keystore/release_password="android"
           EOF
-          fi
 
-          godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
-          test -f build/spatial_simulator.apk
+          godot --headless --export-debug "Android" build/spatial_simulator.apk
+          ls -lh build/spatial_simulator.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
