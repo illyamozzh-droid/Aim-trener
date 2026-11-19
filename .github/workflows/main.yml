@@ -21,13 +21,7 @@ jobs:
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
-
-          sed -i 's|keystore/debug=.*|keystore/debug="/root/.android/debug.keystore"|g' export_presets.cfg
-          sed -i 's|keystore/debug_user=.*|keystore/debug_user="androiddebugkey"|g' export_presets.cfg
-          sed -i 's|keystore/debug_password=.*|keystore/debug_password="android"|g' export_presets.cfg
-          sed -i 's|keystore/release=.*|keystore/release="/root/.android/debug.keystore"|g' export_presets.cfg
-          sed -i 's|keystore/release_user=.*|keystore/release_user="androiddebugkey"|g' export_presets.cfg
-          sed -i 's|keystore/release_password=.*|keystore/release_password="android"|g' export_presets.cfg
+          sed -i 's|/home/runner/.android/debug.keystore|/root/.android/debug.keystore|g' export_presets.cfg
 
           for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable; do
             if [ -d "$src" ]; then
@@ -47,6 +41,10 @@ jobs:
             SDK_PATH=$(dirname "$(dirname "$ADB_FOUND")")
           fi
 
+          export JAVA_HOME="$JAVA_HOME_PATH"
+          export ANDROID_HOME="$SDK_PATH"
+          export ANDROID_SDK_ROOT="$SDK_PATH"
+
           cat << EOF > /github/home/.config/godot/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
@@ -59,8 +57,9 @@ jobs:
           EOF
           cp /github/home/.config/godot/editor_settings-4.4.tres /root/.config/godot/editor_settings-4.4.tres
 
-          echo "=== JAVA: $JAVA_HOME_PATH | SDK: $SDK_PATH ==="
-          ls -la /root/.android/debug.keystore || true
-          cat export_presets.cfg
+          echo "=== HOME=${HOME:-} | JAVA=$JAVA_HOME_PATH | SDK=$SDK_PATH ==="
+          find / -name "editor_settings*" 2>/dev/null || true
+          echo "=== export_presets.cfg ==="
+          cat export_presets.cfg || true
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
