@@ -48,18 +48,24 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Configure Godot Android Settings
+           - name: Configure Godot Android Settings
         run: |
-          mkdir -p "$HOME/.config/godot"
-          cat << 'EOF' > "$HOME/.config/godot/editor_settings-4.4.tres"
-[gd_resource type="EditorSettings" format=3]
+          python3 -c '
+          import os
+          path = os.path.expanduser("~/.config/godot/editor_settings-4.4.tres")
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          content = """[gd_resource type="EditorSettings" format=3]
 
-[resource]
-export/android/android_sdk_path = "/home/runner/android-sdk"
-export/android/debug_keystore = "/home/runner/.android/debug.keystore"
-export/android/debug_keystore_user = "androiddebugkey"
-export/android/debug_keystore_pass = "android"
-EOF
+          [resource]
+          export/android/android_sdk_path = "/home/runner/android-sdk"
+          export/android/debug_keystore = "/home/runner/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          """
+          with open(path, "w") as f:
+              f.write("\n".join(line.lstrip() for line in content.splitlines()) + "\n")
+          '
+
 
       - name: Export APK
         env:
