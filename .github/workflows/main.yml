@@ -17,7 +17,7 @@ jobs:
 
       - name: Setup and Export
         run: |
-          mkdir -p /root/.android /github/home/.local/share/godot/export_templates/4.4.1.stable /github/home/.config/godot /root/.config/godot /__w/_temp/_github_home/.config/godot build
+          mkdir -p /root/.android /github/home/.local/share/godot/export_templates/4.4.1.stable /github/home/.config/godot /root/.config/godot build
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
@@ -55,27 +55,15 @@ jobs:
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
 
-          for target_dir in /github/home/.config/godot /root/.config/godot /__w/_temp/_github_home/.config/godot; do
+          for target_dir in /github/home/.config/godot /root/.config/godot; do
             mkdir -p "$target_dir"
             cp -f /tmp/editor_settings-4.4.tres "$target_dir/editor_settings-4.4.tres" 2>/dev/null || true
           done
 
-          if ! grep -q 'keystore/debug=' export_presets.cfg 2>/dev/null; then
-            cat << 'EOF' >> export_presets.cfg
-          keystore/debug="/root/.android/debug.keystore"
-          keystore/debug_user="androiddebugkey"
-          keystore/debug_password="android"
-          keystore/release="/root/.android/debug.keystore"
-          keystore/release_user="androiddebugkey"
-          keystore/release_password="android"
-          EOF
-          else
-            sed -i 's|keystore/debug=.*|keystore/debug="/root/.android/debug.keystore"|g' export_presets.cfg
-            sed -i 's|keystore/debug_user=.*|keystore/debug_user="androiddebugkey"|g' export_presets.cfg
-            sed -i 's|keystore/debug_password=.*|keystore/debug_password="android"|g' export_presets.cfg
-            sed -i 's|keystore/release=.*|keystore/release="/root/.android/debug.keystore"|g' export_presets.cfg
-            sed -i 's|keystore/release_user=.*|keystore/release_user="androiddebugkey"|g' export_presets.cfg
-            sed -i 's|keystore/release_password=.*|keystore/release_password="android"|g' export_presets.cfg
-          fi
+          echo "=== SDK contents ==="
+          ls -la "${SDK_PATH:-/usr/lib/android-sdk}" 2>/dev/null || true
+          ls -la "${SDK_PATH:-/usr/lib/android-sdk}/platforms" "${SDK_PATH:-/usr/lib/android-sdk}/build-tools" 2>/dev/null || true
+          echo "=== export_presets.cfg key lines ==="
+          grep -E 'keystore|gradle|sdk|version|code|package' export_presets.cfg || true
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
