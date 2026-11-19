@@ -15,74 +15,46 @@ jobs:
         with:
           lfs: true
 
-      - name: Fix Templates and Java SDK
+      - name: Setup and Export
         run: |
-          mkdir -p /root/.android /github/home/.local/share/godot/export_templates/4.4.1.stable /github/home/.config/godot
+          mkdir -p /root/.android /github/home/.local/share/godot/export_templates/4.4.1.stable /github/home/.config/godot /root/.config/godot build
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
           sed -i 's|/home/runner/.android/debug.keystore|/root/.android/debug.keystore|g' export_presets.cfg
 
-          for dir in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono; do
-            if [ -d "$dir" ] && [ "$(ls -A "$dir" 2>/dev/null)" ]; then
-              cp -rn "$dir"/* /github/home/.local/share/godot/export_templates/4.4.1.stable/ || true
+          for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable; do
+            if [ -d "$src" ]; then
+              cp -rn "$src"/* /github/home/.local/share/godot/export_templates/4.4.1.stable/ 2>/dev/null || true
             fi
           done
-
-          if [ ! -f /github/home/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk ]; then
-            curl -fL "https://github.com/godotengine/godot-builds/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -o /tmp/templates.zip
-            unzip -q /tmp/templates.zip -d /tmp/templates_tmp
-            cp -rn /tmp/templates_tmp/templates/* /github/home/.local/share/godot/export_templates/4.4.1.stable/
-          fi
 
           JAVA_BIN=$(command -v java || true)
           JAVA_HOME_PATH=""
           if [ -n "$JAVA_BIN" ]; then
-            REAL_JAVA=$(readlink -f "$JAVA_BIN")
-            JAVA_HOME_PATH=$(dirname "$(dirname "$REAL_JAVA")")
+            JAVA_HOME_PATH=$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")
           fi
-          echo "Detected JAVA_HOME: $JAVA_HOME_PATH"
 
-          ANDROID_SDK_PATH=""
-          for candidate in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" /root/android-sdk /opt/android-sdk /usr/local/android-sdk /usr/lib/android-sdk; do
-            if [ -n "$candidate" ] && [ -d "$candidate/platforms" ]; then
-              ANDROID_SDK_PATH="$candidate"
-              break
-            fi
-          done
-          if [ -z "$ANDROID_SDK_PATH" ]; then
-            ADB_BIN=$(command -v adb || true)
-            if [ -n "$ADB_BIN" ]; then
-              REAL_ADB=$(readlink -f "$ADB_BIN")
-              ANDROID_SDK_PATH=$(dirname "$(dirname "$REAL_ADB")")
-            fi
+          SDK_PATH=""
+          ADB_FOUND=$(find / -name "adb" -type f 2>/dev/null | head -n 1 || true)
+          if [ -n "$ADB_FOUND" ]; then
+            SDK_PATH=$(dirname "$(dirname "$ADB_FOUND")")
           fi
-          echo "Detected ANDROID_SDK: $ANDROID_SDK_PATH"
 
-          cat << 'EOF' > /github/home/.config/godot/editor_settings-4.4.tres
+          cat << EOF > /github/home/.config/godot/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
           export/android/debug_keystore = "/root/.android/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
+          export/android/java_sdk_path = "$JAVA_HOME_PATH"
+          export/android/android_sdk_path = "$SDK_PATH"
           EOF
+          cp /github/home/.config/godot/editor_settings-4.4.tres /root/.config/godot/editor_settings-4.4.tres
 
-          if [ -n "$JAVA_HOME_PATH" ]; then
-            printf 'export/android/java_sdk_path = "%s"\n' "$JAVA_HOME_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
-          fi
-          if [ -n "$ANDROID_SDK_PATH" ]; then
-            printf 'export/android/android_sdk_path = "%s"\n' "$ANDROID_SDK_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
-          fi
+          echo "=== JAVA: $JAVA_HOME_PATH | SDK: $SDK_PATH ==="
           cat /github/home/.config/godot/editor_settings-4.4.tres
+          ls -la /github/home/.local/share/godot/export_templates/4.4.1.stable/ || true
 
-      - name: Export APK
-        run: |
-          mkdir -p build
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: spatial-simulator-apk
-          path: build/spatial_simulator.apk
