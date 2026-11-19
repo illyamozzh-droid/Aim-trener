@@ -44,13 +44,13 @@ jobs:
           echo "Detected JAVA_HOME: $JAVA_HOME_PATH"
 
           cat << 'EOF' > /github/home/.config/godot/editor_settings-4.4.tres
-[gd_resource type="EditorSettings" format=3]
+          [gd_resource type="EditorSettings" format=3]
 
-[resource]
-export/android/debug_keystore = "/root/.android/debug.keystore"
-export/android/debug_keystore_user = "androiddebugkey"
-export/android/debug_keystore_pass = "android"
-EOF
+          [resource]
+          export/android/debug_keystore = "/root/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
 
           if [ -n "$JAVA_HOME_PATH" ]; then
             printf 'export/android/java_sdk_path = "%s"\n' "$JAVA_HOME_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
