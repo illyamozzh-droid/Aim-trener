@@ -60,10 +60,23 @@ jobs:
             cp -f /tmp/editor_settings-4.4.tres "$target_dir/editor_settings-4.4.tres" 2>/dev/null || true
           done
 
-          echo "=== SDK contents ==="
-          ls -la "${SDK_PATH:-/usr/lib/android-sdk}" 2>/dev/null || true
-          ls -la "${SDK_PATH:-/usr/lib/android-sdk}/platforms" "${SDK_PATH:-/usr/lib/android-sdk}/build-tools" 2>/dev/null || true
-          echo "=== export_presets.cfg key lines ==="
-          grep -E 'keystore|gradle|sdk|version|code|package' export_presets.cfg || true
+          python3 -c '
+          p = "export_presets.cfg"
+          with open(p, "r", encoding="utf-8") as f:
+              text = f.read()
+          lines = [l for l in text.splitlines() if not l.startswith(("keystore/debug=", "keystore/debug_user=", "keystore/debug_password=", "keystore/release=", "keystore/release_user=", "keystore/release_password="))]
+          add = [
+              "keystore/debug=\"/root/.android/debug.keystore\"",
+              "keystore/debug_user=\"androiddebugkey\"",
+              "keystore/debug_password=\"android\"",
+              "keystore/release=\"/root/.android/debug.keystore\"",
+              "keystore/release_user=\"androiddebugkey\"",
+              "keystore/release_password=\"android\"",
+          ]
+          out = "\n".join(lines) + "\n" + "\n".join(add) + "\n"
+          with open(p, "w", encoding="utf-8") as f:
+              f.write(out)
+          '
+          grep -E 'keystore/|gradle_build/' export_presets.cfg || true
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
