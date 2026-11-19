@@ -21,12 +21,6 @@ jobs:
           export HOME=/root
           mkdir -p /root/.android /home/runner/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
 
-          echo "=== TEMPLATES & SDK CHECK ==="
-          ls -la /root/.local/share/godot/export_templates/ || true
-          ls -la /usr/local/share/godot/templates/ 2>/dev/null || true
-          ls -la /usr/lib/android-sdk/build-tools/ 2>/dev/null || true
-          ls -la /usr/lib/android-sdk/platforms/ 2>/dev/null || true
-
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
@@ -37,6 +31,8 @@ jobs:
               cp -rn "$src"/* /root/.local/share/godot/export_templates/4.4.1.stable/ 2>/dev/null || true
             fi
           done
+
+          ls -la /root/.local/share/godot/export_templates/4.4.1.stable/ || true
 
           JAVA_HOME_PATH="/usr/lib/jvm/java-17-openjdk-amd64"
           SDK_PATH="/usr/lib/android-sdk"
@@ -58,7 +54,8 @@ jobs:
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
 
-          cat << 'EOF' > export_presets.cfg
+          if [ ! -f export_presets.cfg ]; then
+            cat << 'EOF' > export_presets.cfg
           [preset.0]
 
           name="Android"
@@ -94,8 +91,6 @@ jobs:
           screen/immersive_mode=true
           screen/orientation=0
           textures/vram_compression/import_etc2_astc=true
-          sdk/min_sdk="24"
-          sdk/target_sdk="33"
           keystore/debug="/root/.android/debug.keystore"
           keystore/debug_user="androiddebugkey"
           keystore/debug_password="android"
@@ -103,8 +98,9 @@ jobs:
           keystore/release_user="androiddebugkey"
           keystore/release_password="android"
           EOF
+          fi
 
-          godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk 2>&1 | tee /tmp/godot_export.log
+          godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
           test -f build/spatial_simulator.apk
 
       - name: Upload APK
