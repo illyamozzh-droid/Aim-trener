@@ -17,8 +17,15 @@ jobs:
 
       - name: Setup and Export
         run: |
+          set -e
           export HOME=/root
           mkdir -p /root/.android /home/runner/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
+
+          echo "=== TEMPLATES & SDK CHECK ==="
+          ls -la /root/.local/share/godot/export_templates/ || true
+          ls -la /usr/local/share/godot/templates/ 2>/dev/null || true
+          ls -la /usr/lib/android-sdk/build-tools/ 2>/dev/null || true
+          ls -la /usr/lib/android-sdk/platforms/ 2>/dev/null || true
 
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
@@ -87,6 +94,8 @@ jobs:
           screen/immersive_mode=true
           screen/orientation=0
           textures/vram_compression/import_etc2_astc=true
+          sdk/min_sdk="24"
+          sdk/target_sdk="33"
           keystore/debug="/root/.android/debug.keystore"
           keystore/debug_user="androiddebugkey"
           keystore/debug_password="android"
@@ -96,8 +105,7 @@ jobs:
           EOF
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk 2>&1 | tee /tmp/godot_export.log
-          echo "=== LINES AROUND configuration errors ==="
-          grep -n -C 5 "configuration errors" /tmp/godot_export.log || true
+          test -f build/spatial_simulator.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
