@@ -43,6 +43,22 @@ jobs:
           fi
           echo "Detected JAVA_HOME: $JAVA_HOME_PATH"
 
+          ANDROID_SDK_PATH=""
+          for candidate in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" /root/android-sdk /opt/android-sdk /usr/local/android-sdk /usr/lib/android-sdk; do
+            if [ -n "$candidate" ] && [ -d "$candidate/platforms" ]; then
+              ANDROID_SDK_PATH="$candidate"
+              break
+            fi
+          done
+          if [ -z "$ANDROID_SDK_PATH" ]; then
+            ADB_BIN=$(command -v adb || true)
+            if [ -n "$ADB_BIN" ]; then
+              REAL_ADB=$(readlink -f "$ADB_BIN")
+              ANDROID_SDK_PATH=$(dirname "$(dirname "$REAL_ADB")")
+            fi
+          fi
+          echo "Detected ANDROID_SDK: $ANDROID_SDK_PATH"
+
           cat << 'EOF' > /github/home/.config/godot/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
@@ -55,6 +71,10 @@ jobs:
           if [ -n "$JAVA_HOME_PATH" ]; then
             printf 'export/android/java_sdk_path = "%s"\n' "$JAVA_HOME_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
           fi
+          if [ -n "$ANDROID_SDK_PATH" ]; then
+            printf 'export/android/android_sdk_path = "%s"\n' "$ANDROID_SDK_PATH" >> /github/home/.config/godot/editor_settings-4.4.tres
+          fi
+          cat /github/home/.config/godot/editor_settings-4.4.tres
 
       - name: Export APK
         run: |
