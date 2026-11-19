@@ -18,11 +18,12 @@ jobs:
       - name: Setup and Export
         run: |
           export HOME=/root
-          mkdir -p /root/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
+          mkdir -p /root/.android /home/runner/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
 
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          cp -f /root/.android/debug.keystore /home/runner/.android/debug.keystore
 
           for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable /github/home/.local/share/godot/export_templates/4.4.1.stable; do
             if [ -d "$src" ] && [ "$src" != "/root/.local/share/godot/export_templates/4.4.1.stable" ]; then
@@ -43,12 +44,11 @@ jobs:
           export/android/debug_keystore = "/root/.android/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
+          export/android/release_keystore = "/root/.android/debug.keystore"
+          export/android/release_keystore_user = "androiddebugkey"
+          export/android/release_keystore_pass = "android"
           export/android/java_sdk_path = "$JAVA_HOME_PATH"
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
-
-          echo "=== FULL export_presets.cfg ==="
-          cat export_presets.cfg || true
-          echo "=== END export_presets.cfg ==="
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
