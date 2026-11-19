@@ -21,6 +21,7 @@ jobs:
       image: barichello/godot-ci:4.4.1
 
     env:
+      HOME: /github/home
       ANDROID_HOME: /usr/lib/android-sdk
       ANDROID_SDK_ROOT: /usr/lib/android-sdk
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
@@ -33,59 +34,75 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify Godot and Android SDK
+      - name: Verify build environment
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ ! -f project.godot ]]; then
-            echo "::error::project.godot not found in repository root"
-            exit 1
-          fi
+          test -f project.godot
+          test -x /usr/local/bin/godot
+          test -d "$ANDROID_HOME/platforms/android-33"
+          test -d "$ANDROID_HOME/build-tools/33.0.2"
+          test -x "$JAVA_HOME/bin/java"
 
-          if [[ ! -x /usr/local/bin/godot ]]; then
-            echo "::error::Godot binary not found at /usr/local/bin/godot"
-            exit 1
-          fi
-
-          GODOT_VERSION="$(/usr/local/bin/godot --version | head -n 1)"
+          GODOT_VERSION="$(/usr/local/bin/godot --version)"
 
           if [[ "$GODOT_VERSION" != 4.4.1* ]]; then
-            echo "::error::Expected Godot 4.4.1, found: $GODOT_VERSION"
-            exit 1
-          fi
-
-          if [[ ! -d "$ANDROID_HOME/platforms/android-33" ]]; then
-            echo "::error::Android SDK platform android-33 not found"
-            exit 1
-          fi
-
-          if [[ ! -d "$ANDROID_HOME/build-tools/33.0.2" ]]; then
-            echo "::error::Android Build Tools 33.0.2 not found"
-            exit 1
-          fi
-
-          if [[ ! -x "$JAVA_HOME/bin/java" ]] || [[ ! -x "$JAVA_HOME/bin/javac" ]]; then
-            echo "::error::Java JDK 17 not found at $JAVA_HOME"
-            exit 1
-          fi
-
-          if [[ ! -s /root/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk ]]; then
-            echo "::error::Godot Android debug export template not found"
+            echo "::error::Expected Godot 4.4.1, got $GODOT_VERSION"
             exit 1
           fi
 
           echo "Godot: $GODOT_VERSION"
+          echo "HOME: $HOME"
           echo "Android SDK: $ANDROID_HOME"
-          echo "Java SDK: $JAVA_HOME"
-          echo "Android Build Tools: 33.0.2"
+          echo "Java: $JAVA_HOME"
+
+      - name: Install Android export templates into HOME
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SOURCE="/root/.local/share/godot/export_templates/4.4.1.stable"
+          DEST="$HOME/.local/share/godot/export_templates/4.4.1.stable"
+
+          if [[ ! -d "$SOURCE" ]]; then
+            echo "::error::Source export templates not found: $SOURCE"
+            exit 1
+          fi
+
+          mkdir -p "$DEST"
+
+          SOURCE_REAL="$(realpath "$SOURCE")"
+          DEST_REAL="$(realpath "$DEST")"
+
+          if [[ "$SOURCE_REAL" != "$DEST_REAL" ]]; then
+            echo "Copying export templates:"
+            echo "$SOURCE"
+            echo "-> $DEST"
+
+            cp -a "$SOURCE/." "$DEST/"
+          else
+            echo "Source and destination are identical. Skipping copy."
+          fi
+
+          for TEMPLATE in android_debug.apk android_release.apk; do
+            if [[ ! -s "$DEST/$TEMPLATE" ]]; then
+              echo "::error::Missing export template: $DEST/$TEMPLATE"
+              exit 1
+            fi
+          done
+
+          if [[ ! -s "$DEST/version.txt" ]]; then
+            echo "4.4.1.stable" > "$DEST/version.txt"
+          fi
+
+          echo "Installed templates:"
+          ls -lh "$DEST"
 
       - name: Configure Android debug keystore
         shell: bash
         run: |
           set -euo pipefail
-
-          mkdir -p /root
 
           if [[ ! -s /root/debug.keystore ]] || \
              ! keytool -list \
@@ -115,14 +132,14 @@ jobs:
             -storepass android \
             -alias androiddebugkey
 
-      - name: Configure Godot editor settings
+      - name: Configure Godot Android editor settings
         shell: bash
         run: |
           set -euo pipefail
 
-          mkdir -p /root/.config/godot
+          mkdir -p "$HOME/.config/godot"
 
-          cat > /root/.config/godot/editor_settings-4.4.tres <<'EOF'
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<'EOF'
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -136,9 +153,64 @@ jobs:
           export/android/shutdown_adb_on_exit = true
           EOF
 
-          test -s /root/.config/godot/editor_settings-4.4.tres
+          test -s "$HOME/.config/godot/editor_settings-4.4.tres"
 
-      - name: Configure Android export preset
+      - name: Configure Android project settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # ETC2/ASTC compression is required for Android export.
+          # Ensure the setting is in project.godot, not export_presets.cfg.
+
+          awk '
+            BEGIN {
+              in_rendering = 0
+              found_rendering = 0
+              found_setting = 0
+            }
+
+            /^\[rendering\]$/ {
+              in_rendering = 1
+              found_rendering = 1
+              print
+              next
+            }
+
+            /^\[/ {
+              if (in_rendering && !found_setting) {
+                print "textures/vram_compression/import_etc2_astc=true"
+                found_setting = 1
+              }
+              in_rendering = 0
+            }
+
+            in_rendering && /^textures\/vram_compression\/import_etc2_astc=/ {
+              if (!found_setting) {
+                print "textures/vram_compression/import_etc2_astc=true"
+              }
+              found_setting = 1
+              next
+            }
+
+            {
+              print
+            }
+
+            END {
+              if (in_rendering && !found_setting) {
+                print "textures/vram_compression/import_etc2_astc=true"
+              }
+
+              if (!found_rendering) {
+                print "\n[rendering]\ntextures/vram_compression/import_etc2_astc=true"
+              }
+            }
+          ' project.godot > project.godot.tmp
+
+          mv project.godot.tmp project.godot
+
+      - name: Create Android export preset
         shell: bash
         run: |
           set -euo pipefail
@@ -166,12 +238,8 @@ jobs:
           custom_template/release=""
 
           gradle_build/use_gradle_build=false
-          gradle_build/gradle_build_directory=""
-          gradle_build/android_source_template=""
-          gradle_build/min_sdk="24"
-          gradle_build/target_sdk="33"
 
-          architectures/armeabi-v7a=false
+          architectures/armeabi-v7a=true
           architectures/arm64-v8a=true
           architectures/x86=false
           architectures/x86_64=false
@@ -186,11 +254,9 @@ jobs:
           screen/immersive_mode=true
           screen/orientation=0
 
-          textures/vram_compression/import_etc2_astc=true
-
-          keystore/debug="/root/debug.keystore"
-          keystore/debug_user="androiddebugkey"
-          keystore/debug_password="android"
+          keystore/debug=""
+          keystore/debug_user=""
+          keystore/debug_password=""
 
           keystore/release=""
           keystore/release_user=""
@@ -199,15 +265,15 @@ jobs:
 
           test -s export_presets.cfg
 
-      - name: Import Godot project resources
+      - name: Import Godot project
         shell: bash
         run: |
           set -euo pipefail
 
           /usr/local/bin/godot \
             --headless \
-            --path "$GITHUB_WORKSPACE" \
             --editor \
+            --path "$GITHUB_WORKSPACE" \
             --import \
             --quit
 
@@ -221,14 +287,17 @@ jobs:
           mkdir -p build
           rm -f build/spatial_simulator.apk
 
+          echo "Starting Android Debug APK export..."
+
           /usr/local/bin/godot \
             --headless \
+            --path "$GITHUB_WORKSPACE" \
             --export-debug \
             "Android" \
-            build/spatial_simulator.apk
+            "build/spatial_simulator.apk"
 
           if [[ ! -s build/spatial_simulator.apk ]]; then
-            echo "::error::Android APK was not created: build/spatial_simulator.apk"
+            echo "::error::APK was not created!"
             exit 1
           fi
 
@@ -236,6 +305,8 @@ jobs:
 
           echo "APK successfully created:"
           ls -lh build/spatial_simulator.apk
+
+          echo "SHA256:"
           sha256sum build/spatial_simulator.apk
 
       - name: Upload Android Debug APK
