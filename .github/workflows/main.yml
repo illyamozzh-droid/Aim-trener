@@ -48,22 +48,26 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Configure Godot Android Settings
+      - name: Initialize and Configure Godot
         run: |
+          timeout 25s ./Godot_v4.4.1-stable_linux.x86_64 --headless --editor --quit || true
           python3 -c '
-          import os
-          path = os.path.expanduser("~/.config/godot/editor_settings-4.4.tres")
-          os.makedirs(os.path.dirname(path), exist_ok=True)
-          content = """[gd_resource type="EditorSettings" format=3]
-
-          [resource]
+          import os, glob
+          cfg_dir = os.path.expanduser("~/.config/godot")
+          os.makedirs(cfg_dir, exist_ok=True)
+          files = glob.glob(os.path.join(cfg_dir, "editor_settings*.tres")) or [os.path.join(cfg_dir, "editor_settings-4.4.tres")]
+          extra = """
           export/android/android_sdk_path = "/home/runner/android-sdk"
           export/android/debug_keystore = "/home/runner/.android/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           """
-          with open(path, "w") as f:
-              f.write("\n".join(line.lstrip() for line in content.splitlines()) + "\n")
+          for p in files:
+              txt = open(p).read() if os.path.exists(p) else "[gd_resource type=\"EditorSettings\" format=3]\n\n[resource]\n"
+              if "[resource]" not in txt:
+                  txt += "\n[resource]\n"
+              with open(p, "w") as f:
+                  f.write(txt + "\n".join(l.strip() for l in extra.splitlines()) + "\n")
           '
 
       - name: Export APK
@@ -72,7 +76,7 @@ jobs:
           ANDROID_SDK_ROOT: /home/runner/android-sdk
         run: |
           mkdir -p build
-          ./Godot_v4.4.1-stable_linux.x86_64 --headless --export-debug "Android" build/spatial_simulator.apk
+          ./Godot_v4.4.1-stable_linux.x86_64 --headless --verbose --export-debug "Android" build/spatial_simulator.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
