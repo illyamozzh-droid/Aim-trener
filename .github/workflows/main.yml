@@ -17,34 +17,26 @@ jobs:
 
       - name: Setup and Export
         run: |
-          mkdir -p /root/.android /github/home/.local/share/godot/export_templates/4.4.1.stable /github/home/.config/godot /root/.config/godot build
+          export HOME=/root
+          mkdir -p /root/.android /root/.local/share/godot/export_templates/4.4.1.stable /root/.config/godot build
+
           if [ ! -f /root/.android/debug.keystore ]; then
             keytool -genkeypair -v -keystore /root/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable; do
-            if [ -d "$src" ]; then
-              cp -rn "$src"/* /github/home/.local/share/godot/export_templates/4.4.1.stable/ 2>/dev/null || true
+          for src in /root/.local/share/godot/export_templates/4.4.1.stable /root/.local/share/godot/export_templates/4.4.1.stable.mono /usr/local/share/godot/templates/4.4.1.stable /github/home/.local/share/godot/export_templates/4.4.1.stable; do
+            if [ -d "$src" ] && [ "$src" != "/root/.local/share/godot/export_templates/4.4.1.stable" ]; then
+              cp -rn "$src"/* /root/.local/share/godot/export_templates/4.4.1.stable/ 2>/dev/null || true
             fi
           done
 
-          JAVA_BIN=$(command -v java || true)
-          JAVA_HOME_PATH=""
-          if [ -n "$JAVA_BIN" ]; then
-            JAVA_HOME_PATH=$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")
-          fi
-
-          SDK_PATH=""
-          ADB_FOUND=$(find / -name "adb" -type f 2>/dev/null | head -n 1 || true)
-          if [ -n "$ADB_FOUND" ]; then
-            SDK_PATH=$(dirname "$(dirname "$ADB_FOUND")")
-          fi
-
+          JAVA_HOME_PATH="/usr/lib/jvm/java-17-openjdk-amd64"
+          SDK_PATH="/usr/lib/android-sdk"
           export JAVA_HOME="$JAVA_HOME_PATH"
           export ANDROID_HOME="$SDK_PATH"
           export ANDROID_SDK_ROOT="$SDK_PATH"
 
-          cat << EOF > /tmp/editor_settings-4.4.tres
+          cat << EOF > /root/.config/godot/editor_settings-4.4.tres
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -54,11 +46,6 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME_PATH"
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
-
-          for target_dir in /github/home/.config/godot /root/.config/godot; do
-            mkdir -p "$target_dir"
-            cp -f /tmp/editor_settings-4.4.tres "$target_dir/editor_settings-4.4.tres" 2>/dev/null || true
-          done
 
           if [ -f export_presets.cfg ]; then
             grep -v -E '^(keystore/debug=|keystore/debug_user=|keystore/debug_password=|keystore/release=|keystore/release_user=|keystore/release_password=)' export_presets.cfg > /tmp/export_presets.cfg.tmp
@@ -72,5 +59,8 @@ jobs:
           EOF
             mv /tmp/export_presets.cfg.tmp export_presets.cfg
           fi
+
+          echo "=== FULL export_presets.cfg ==="
+          cat export_presets.cfg || true
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
