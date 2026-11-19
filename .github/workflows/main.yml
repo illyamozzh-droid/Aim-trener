@@ -1,1 +1,33 @@
+name: Android Build
 
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download Godot
+        run: |
+          wget -q https://downloads.godotengine.org/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q Godot_v4.4.1-stable_linux.x86_64.zip
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Export APK
+        run: |
+          mkdir -p build
+          ./Godot_v4.4.1-stable_linux.x86_64 --headless --path . --export-debug "Android" build/spatial_simulator.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spatial-simulator-android
+          path: build/spatial_simulator.apk
