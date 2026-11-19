@@ -47,20 +47,8 @@ jobs:
           export/android/android_sdk_path = "$SDK_PATH"
           EOF
 
-          if [ -f export_presets.cfg ]; then
-            grep -v -E '^(keystore/debug=|keystore/debug_user=|keystore/debug_password=|keystore/release=|keystore/release_user=|keystore/release_password=)' export_presets.cfg > /tmp/export_presets.cfg.tmp
-            cat << 'EOF' >> /tmp/export_presets.cfg.tmp
-          keystore/debug="/root/.android/debug.keystore"
-          keystore/debug_user="androiddebugkey"
-          keystore/debug_password="android"
-          keystore/release="/root/.android/debug.keystore"
-          keystore/release_user="androiddebugkey"
-          keystore/release_password="android"
-          EOF
-            mv /tmp/export_presets.cfg.tmp export_presets.cfg
-          fi
-
           echo "=== FULL export_presets.cfg ==="
           cat export_presets.cfg || true
+          echo "=== END export_presets.cfg ==="
 
           godot --headless --verbose --export-debug "Android" build/spatial_simulator.apk
