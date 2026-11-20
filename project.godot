@@ -3,7 +3,7 @@ config_version=5
 [application]
 
 config/name="Spatial Accuracy Simulator"
-run/main_scene="res://test_start.tscn"
+run/main_scene="res://AimTrainer.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [display]
